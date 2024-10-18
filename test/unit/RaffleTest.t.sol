@@ -24,7 +24,7 @@ contract RaffleTest is Test {
 
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
-        (raffle, helperConfig) = deployer.deployContract();
+        (raffle, helperConfig) = deployer.run();
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
         entranceFee = config.entranceFee;
         interval = config.interval;
@@ -87,6 +87,22 @@ contract RaffleTest is Test {
     ///////////////
 
     function testCheckUpkeepReturnsFalseIfIthasNoBalance() public {
+        // Arrange
+        vm.warp(block.timestamp + 1);
+        vm.roll(block.number + 1);
+
+        // Act
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+
+        // Assert
+        assert(!upkeepNeeded);
+    }
+
+    /////////////////////////////
+    //// CheckUpkeep ////////////
+    /////////////////////////////
+
+    function testCheckUpkeepReturnsFalseIfItsHasNoBalance() public {
         // Arrange
         vm.warp(block.timestamp + 1);
         vm.roll(block.number + 1);

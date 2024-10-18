@@ -22,8 +22,9 @@ contract Raffle is VRFConsumerBaseV2Plus {
     enum RaffleState {
         OPEN, // In simple terms It will be 0
         CALCULATING // 1.
-        // 3
-        // 4
+            // 3
+            // 4
+
     }
 
     /* State Variables */
@@ -46,6 +47,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
      */
     event EnteredRaffle(address indexed player);
     event WinnerPicked(address indexed winner);
+    event RequestedRaffleWinner(uint256 indexed requestId);
 
     constructor(
         uint256 entranceFee,
@@ -88,9 +90,11 @@ contract Raffle is VRFConsumerBaseV2Plus {
      * 3. The contract has ETH(aka, players)
      * 4. (Implicit) The Subcription is funded with LINK
      */
-    function checkUpkeep(
-        bytes memory /* checkData */
-    ) public view returns (bool upKeepNeeded, bytes memory /* performData */) {
+    function checkUpkeep(bytes memory /* checkData */ )
+        public
+        view
+        returns (bool upKeepNeeded, bytes memory /* performData */ )
+    {
         bool timeHasPassed = (block.timestamp - s_lastTimeStamp) >= i_interval;
         bool isOpen = s_raffleState == RaffleState.OPEN;
         bool hasBalance = address(this).balance > 0;
@@ -99,8 +103,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
         return (upKeepNeeded, "0x0");
     }
 
-    function performUpkeep(bytes calldata /* */) external {
-        (bool upKeepNeeded, ) = checkUpkeep("");
+    function performUpkeep(bytes calldata /* */ ) external {
+        (bool upKeepNeeded,) = checkUpkeep("");
         if (!upKeepNeeded) {
             revert Raffle__UpKeepNeeded();
         }
@@ -114,21 +118,17 @@ contract Raffle is VRFConsumerBaseV2Plus {
                 callbackGasLimit: i_callbackGasLimit,
                 numWords: NUM_WORDS,
                 // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
-                extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
-                )
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
             })
         );
+        emit RequestedRaffleWinner(requestId);
     }
 
     // 1. Get a random number
     // 2. Use the random number to pick a buyer
     // 3. Be Automatically called
 
-    function fulfillRandomWords(
-        uint256,
-        uint256[] calldata randomWords
-    ) internal override {
+    function fulfillRandomWords(uint256, uint256[] calldata randomWords) internal override {
         // s_players = 10
         // rng = 12
         // 12 % 10 = 2
@@ -141,10 +141,12 @@ contract Raffle is VRFConsumerBaseV2Plus {
         s_players = new address payable[](0);
         s_lastTimeStamp = block.timestamp;
 
-        (bool success, ) = winner.call{value: address(this).balance}("");
+        (bool success,) = winner.call{value: address(this).balance}("");
+
         if (!success) {
             revert Raffle__TransferFailed();
         }
+
         emit WinnerPicked(winner);
     }
 
@@ -159,5 +161,9 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     function getPlayer(uint256 indexOfPlayer) external view returns (address) {
         return s_players[indexOfPlayer];
+    }
+
+    function getRecentWinner() external view returns (address) {
+        return s_recentWinner;
     }
 }
